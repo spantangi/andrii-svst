@@ -77,3 +77,22 @@ each stage reads.
 
 Stage 1 is CPU-only and runs anywhere. Stages 2–3 need a GPU — this repo is
 also the transport for moving the config and alignment code to that box.
+
+## Running Stage 1
+
+```bash
+python3 -m venv --without-pip .venv     # this box has no ensurepip; bootstrap
+                                        # pip with https://bootstrap.pypa.io/get-pip.py
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/run_stage1.py \
+    --config configs/stage1_ungated.yaml --run-id <id>
+```
+
+Exit code is 0 on GATE: PASS, 1 on FAIL.
+
+### Gated resources
+
+`google/gemma-2-2b`, `meta-llama/Llama-3.1-8B` and `lmsys/lmsys-chat-1m` all
+require accepting a license on the Hub. `configs/stage1_ungated.yaml` swaps in
+ungated equivalents so the gate can run today; `configs/base.yaml` keeps the
+intended pair. Set `HF_TOKEN` and switch configs once access is granted.

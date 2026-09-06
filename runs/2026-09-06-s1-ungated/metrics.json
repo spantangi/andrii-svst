@@ -1,0 +1,50 @@
+{
+  "stage1_alignment": {
+    "gate_buckets": [
+      "prose",
+      "chat"
+    ],
+    "n_samples": 1000,
+    "alignment_rate": 1.0,
+    "n_failures": 0,
+    "probe": {
+      "n": 200,
+      "aligned": 172,
+      "rate": 0.86
+    },
+    "per_bucket": {
+      "chat": {
+        "n": 500,
+        "aligned": 500,
+        "rate": 1.0,
+        "reasons": {}
+      },
+      "prose": {
+        "n": 500,
+        "aligned": 500,
+        "rate": 1.0,
+        "reasons": {}
+      },
+      "stress": {
+        "n": 200,
+        "aligned": 172,
+        "rate": 0.86,
+        "reasons": {
+          "coverage_gap": 28
+        }
+      }
+    },
+    "max_span_tokens": {
+      "a": 6,
+      "b": 5,
+      "max_window": 16
+    },
+    "gate": {
+      "threshold_overall": 0.99,
+      "max_prose_failures": 0,
+      "prose_failures": 0,
+      "passed": true
+    }
+  },
+  "_git_sha": "a439c4033cf382df72983c789b6d7409d667c735-dirty"
+}

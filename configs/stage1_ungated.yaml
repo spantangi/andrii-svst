@@ -1,3 +1,12 @@
+# Stage 1 variant using UNGATED models and datasets, so the alignment gate
+# can run without HF license approvals. Substitutions vs configs/base.yaml:
+#   google/gemma-2-2b   -> microsoft/Phi-3-mini-4k-instruct  (both SentencePiece-family,
+#                          32k vocab; gemma-2 is gated on the Hub)
+#   lmsys/lmsys-chat-1m -> HuggingFaceH4/ultrachat_200k      (lmsys is gated)
+# The B side (Qwen2.5, BPE, 151k vocab) is unchanged, so this is still a
+# genuine cross-family SentencePiece<->BPE pair -- which is what Stage 1 tests.
+# Switch to configs/base.yaml once Gemma + LMSYS access is granted.
+
 # Base config for the crosscoder plumbing check.
 # The config IS the experiment: a resolved copy is written to runs/<id>/config.yaml
 # at launch. Never mutate this file in place to change a running experiment.
@@ -12,7 +21,7 @@ models:
   # 0.888/0.165 decoder norms) are reported for Llama-3.1-8B vs Qwen3-8B.
   # We use a smaller cross-family pair. Treat those numbers as directional.
   a:
-    name: google/gemma-2-2b
+    name: microsoft/Phi-3-mini-4k-instruct
     layer: 13           # ~mid-stack of 26; confirm against config.num_hidden_layers
     hook: resid_post
   b:
@@ -23,7 +32,7 @@ models:
 data:
   sources:              # stratified so Check 1 can report per-bucket rates
     - {bucket: prose,  dataset: HuggingFaceFW/fineweb, n: 500}
-    - {bucket: chat,   dataset: lmsys/lmsys-chat-1m,   n: 500}
+    - {bucket: chat,   dataset: HuggingFaceH4/ultrachat_200k,   n: 500}
     - {bucket: stress, dataset: local,                 n: 200}  # PROBE ONLY, not in the gate rate
   n_samples: 1000  # prose + chat; the stress probe is reported separately
   max_seq_len: 512

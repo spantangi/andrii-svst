@@ -1,0 +1,74 @@
+run:
+  id: 2026-09-06-s1-ungated
+  seed: 0
+  notes: ''
+  git_sha: a439c4033cf382df72983c789b6d7409d667c735-dirty
+  source_config: configs/stage1_ungated.yaml
+models:
+  a:
+    name: microsoft/Phi-3-mini-4k-instruct
+    layer: 13
+    hook: resid_post
+  b:
+    name: Qwen/Qwen2.5-1.5B
+    layer: 14
+    hook: resid_post
+data:
+  sources:
+  - bucket: prose
+    dataset: HuggingFaceFW/fineweb
+    n: 500
+  - bucket: chat
+    dataset: HuggingFaceH4/ultrachat_200k
+    n: 500
+  - bucket: stress
+    dataset: local
+    n: 200
+  n_samples: 1000
+  max_seq_len: 512
+alignment:
+  max_window: 16
+  gate_buckets:
+  - prose
+  - chat
+  pass_threshold_overall: 0.99
+  pass_max_prose_failures: 0
+crosscoder:
+  d_model_a: 2304
+  d_model_b: 1536
+  dict_size: 16384
+  auxk_features: 512
+  auxk_source: appendix_text
+sparsity:
+  k_start: 1000
+  k_end: 200
+  anneal_frac: 0.3
+normalization:
+  mode: unit_expected_l2
+  scale_a: null
+  scale_b: null
+outliers:
+  enabled: true
+  threshold_x_median: 2.0
+  mode: paired
+  drop_bos: true
+  warn_masked_frac_above: 0.05
+training:
+  total_steps: 20000
+  batch_size: 4096
+  lr: 0.0001
+  eval_every: 500
+metrics:
+  dead_feature_frac_of_run: 0.2
+  dead_feature_paper_tokens: 10000000
+  extreme_features_topk: 500
+targets:
+  alignment_rate: 0.992
+  fve: 0.817
+  dead_frac:
+  - 0.05
+  - 0.06
+  decoder_norm_extreme_high: 0.888
+  decoder_norm_extreme_low: 0.165
+  fail_fve_below: 0.7
+  fail_dead_frac_above: 0.15

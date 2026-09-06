@@ -1,0 +1,4 @@
+# Stage 1 (alignment gate) only -- CPU, no torch needed.
+transformers>=5.0
+datasets>=3.0
+pyyaml>=6.0
