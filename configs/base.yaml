@@ -1,0 +1,97 @@
+# Base config for the crosscoder plumbing check.
+# The config IS the experiment: a resolved copy is written to runs/<id>/config.yaml
+# at launch. Never mutate this file in place to change a running experiment.
+
+run:
+  id: null            # set at launch, e.g. 2026-09-06-s1-alignment
+  seed: 0
+  notes: ""
+
+models:
+  # NOTE: the target numbers in the task spec (99.2% alignment, FVE 0.817,
+  # 0.888/0.165 decoder norms) are reported for Llama-3.1-8B vs Qwen3-8B.
+  # We use a smaller cross-family pair. Treat those numbers as directional.
+  a:
+    name: google/gemma-2-2b
+    layer: 13           # ~mid-stack of 26; confirm against config.num_hidden_layers
+    hook: resid_post
+  b:
+    name: Qwen/Qwen2.5-1.5B
+    layer: 14           # ~mid-stack of 28; confirm against config.num_hidden_layers
+    hook: resid_post
+
+data:
+  sources:              # stratified so Check 1 can report per-bucket rates
+    - {bucket: prose,  dataset: HuggingFaceFW/fineweb, n: 400}
+    - {bucket: chat,   dataset: lmsys/lmsys-chat-1m,   n: 400}
+    - {bucket: stress, dataset: local,                 n: 200}  # smart quotes, box-drawing, emoji, CJK
+  n_samples: 1000
+  max_seq_len: 512
+
+alignment:
+  # Stage 1 gate. Algorithm 1, greedy window expansion.
+  max_window: 16
+  pass_threshold_overall: 0.99
+  pass_max_prose_failures: 0    # failures in plain prose indicate a loop bug, not a pair property
+
+crosscoder:
+  d_model_a: 2304       # gemma-2-2b hidden size; verify at load
+  d_model_b: 1536       # qwen2.5-1.5b hidden size; verify at load
+  dict_size: 16384
+  # AMBIGUITY SETTLED: the paper gives 1744 in Table 3 and 512 in the appendix
+  # text. We use 512 — it matches the Gao et al. TopK auxk convention this
+  # builds on, and 1744 appears to be derived from a dictionary size we are
+  # not using at reduced scale. Flip and re-run to test sensitivity.
+  auxk_features: 512
+  auxk_source: appendix_text
+
+sparsity:
+  # Endpoints are from the spec. The schedule is expressed as a FRACTION of
+  # total steps, not a fixed 5000, so the anneal actually completes at reduced
+  # scale. If k never reaches k_end, FVE in Check 2 is not interpretable.
+  k_start: 1000
+  k_end: 200
+  anneal_frac: 0.30
+
+normalization:
+  # Required for Check 3. Relative decoder norm is a ratio between the two
+  # models' decoder columns; unequal raw activation scales shift the
+  # distribution off 0.5 for reasons unrelated to the joint loss.
+  mode: unit_expected_l2
+  scale_a: null         # computed in Stage 2, written back into runs/<id>/config.yaml
+  scale_b: null
+
+outliers:
+  # Qwen first-token activations run ~10x median. Masking is PAIRED: if either
+  # side exceeds threshold, the pair is dropped from the loss.
+  enabled: true
+  threshold_x_median: 2.0
+  mode: paired
+  drop_bos: true
+  warn_masked_frac_above: 0.05
+
+training:
+  total_steps: 20000
+  batch_size: 4096
+  lr: 1.0e-4
+  eval_every: 500
+
+metrics:
+  # Dead features are defined in the paper as no activation for 10M consecutive
+  # tokens. At reduced scale that is longer than the whole run, which would
+  # report 0% dead trivially. We use a fraction of total training tokens and
+  # report the absolute token count alongside it.
+  dead_feature_frac_of_run: 0.20
+  dead_feature_paper_tokens: 10_000_000
+  extreme_features_topk: 500
+
+targets:
+  # Paper values, for the Stage 6 comparison table. Not pass/fail at reduced scale.
+  alignment_rate: 0.992
+  fve: 0.817
+  dead_frac: [0.05, 0.06]
+  decoder_norm_extreme_high: 0.888
+  decoder_norm_extreme_low: 0.165
+  # These ARE pass/fail — the spec's "something is wrong" thresholds.
+  fail_fve_below: 0.70
+  fail_dead_frac_above: 0.15
